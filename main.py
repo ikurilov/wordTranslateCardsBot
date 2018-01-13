@@ -28,7 +28,7 @@ def start_messaging(message):
     keyboard.add(btn1)
     keyboard.add(btn2)
 
-    bot.send_message(message.chat.id, 'Приветствую, выберите дальнейшее действие: ', reply_markup=keyboard)
+    bot.send_message(message.chat.id, 'Приветствую, выберите дальнейшее действие: ', reply_markup=keyboard)  # adfasdf
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -38,6 +38,7 @@ def callback_inline(call):
     if call.message:
         if call.data == "test":
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Пыщь")
+
 
 # перевод пользователя в состояние добавления карточки
 @bot.message_handler(commands=["add"])

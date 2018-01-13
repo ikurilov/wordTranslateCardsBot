@@ -28,6 +28,7 @@ def start_messaging(message):
     keyboard.add(btn1)
     keyboard.add(btn2)
 
+    #test
     bot.send_message(message.chat.id, 'Приветствую, выберите дальнейшее действие: ', reply_markup=keyboard)
 
 

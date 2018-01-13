@@ -1,13 +1,3 @@
-from enum import Enum
-
-
-class UserStates(Enum):
-    START = "start"
-    ADDING_WORD = "adding_word"
-    ADDING_TRANSLATION = "adding_translation"
-    TRAINING = "training"
-
-
 def get_user_state(user_id, db):
     db_state = db.prepare("SELECT state FROM user_states  WHERE user_id = $1")
     state = db_state(user_id)

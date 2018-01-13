@@ -7,6 +7,9 @@ from states import get_user_state, set_user_state
 db = postgresql.open(config.dbconnect)
 bot = telebot.TeleBot(config.token)
 
+
+# TODO убрать это
+# слово-перевод, хрень
 temp_words = {}
 
 
@@ -36,15 +39,16 @@ def callback_inline(call):
         if call.data == "test":
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Пыщь")
 
-
+# перевод пользователя в состояние добавления карточки
 @bot.message_handler(commands=["add"])
 def add_word_handler(message):
-    print("command add")
+    print(message)
     user_id = message.from_user.id
     set_user_state(user_id, "adding_word", db)
     bot.send_message(message.chat.id, 'Введите слово на английском языке: ')
 
 
+# все слова, для тестов
 @bot.message_handler(commands=["get_words"])
 def get_all_words(message):
     user_id = message.from_user.id
@@ -55,6 +59,7 @@ def get_all_words(message):
     bot.send_message(message.chat.id, reply)
 
 
+# обработка сообщений от пользователей, находящихся в состоянии добавления англ. слова
 @bot.message_handler(func=lambda message: get_user_state(message.from_user.id, db) == "adding_word")
 def adding_word(message):
     user_id = message.from_user.id
@@ -63,6 +68,7 @@ def adding_word(message):
     bot.send_message(message.chat.id, 'Введите перевод слова ' + message.text)
 
 
+# обработка сообщений от пользователей, находящихся в состоянии добавления перевода
 @bot.message_handler(func=lambda message: get_user_state(message.from_user.id, db) == "adding_translation")
 def adding_translation(message):
     user_id = message.from_user.id
@@ -79,16 +85,19 @@ def adding_translation(message):
     bot.send_message(message.chat.id, 'Запись добавлена: ' + word + ':' + message.text, reply_markup=markup)
 
 
+# добавление пользователья в бд
 def add_user(id):
     db_state = db.prepare("INSERT INTO user_states(user_id, state) VALUES ($1, $2)")
     db_state(id, "start")
 
 
+# добавление карточки в бд
 def add_word(user_id, word, translation):
     prep_statement = db.prepare("INSERT INTO word_translations(user_id, word_en, word_ru) VALUES ($1, $2, $3)")
     prep_statement(user_id, word, translation)
 
 
+# функция выбора слов для тренировки
 def get_words_for_training(user_id):
     db_words = db.prepare('SELECT *, CASE WHEN sum_en = 0 THEN 0 ELSE score_en/sum_en END "koef" \
                            FROM word_translations \

@@ -5,7 +5,7 @@ def get_user_state(user_id, db):
     if len(state) > 0:
         return state[0][0]
     else:
-        return None
+        return ""
 
 
 def set_user_state(user_id, state, db):

@@ -137,13 +137,13 @@ def user_training_handler(message):
     success = user_answer == translation
     change_score(user_id, word, success)
 
-    reply = 'Верно!' if success else 'Неверно! Правильный ответ: ' + translation
+    reply = 'Верно!\n' if success else 'Неверно!\nПравильный ответ: ' + translation + '.\n'
 
     if len(trainings[user_id]) == 0:
         set_user_state(user_id, "start", db)
-        reply += ' Тренировка окончена'
+        reply += 'Тренировка окончена'
     else:
-        reply += '\nВведите перевод слова: ' + trainings[user_id][0][0]
+        reply += 'Введите перевод слова: ' + trainings[user_id][0][0]
 
     bot.send_message(message.chat.id, reply)
 
@@ -165,11 +165,11 @@ def get_words_for_training(user_id):
     db_words = db.prepare('\
         SELECT word_en "word", word_ru "translation", \
         CASE WHEN sum_en = 0 THEN 0 \
-        	 ELSE score_en/sum_en \
+        	 ELSE score_en::float/sum_en::float \
              END "koef"\
         FROM word_translations\
         WHERE user_id = $1\
-        ORDER BY "koef" DESC\
+        ORDER BY "koef"\
         LIMIT 5')
     return db_words(user_id)
 

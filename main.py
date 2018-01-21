@@ -1,7 +1,6 @@
 import telebot
 import postgresql
 import config
-import re
 from states import get_user_state, set_user_state
 
 db = postgresql.open(config.dbconnect)

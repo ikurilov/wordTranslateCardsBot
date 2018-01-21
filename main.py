@@ -1,5 +1,4 @@
 import telebot
-from telebot import types
 import postgresql
 import config
 import re
@@ -16,16 +15,11 @@ trainings = {}
 def start_messaging(message):
     user_id = message.from_user.id
     add_user(user_id)
-    print('user added')
     set_user_state(user_id, 'start', db)
     bot.send_message(message.chat.id,
                      "Здравствуйте! Наш бот может работать для вас в качестве вашего личного словаря, а также поможет запомнить трудно дающиеся вам слова.")
     bot.send_message(message.chat.id, 'Введите "/" и выбирите одну из предложенных команд: ')
-    '''keyboard = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton(text="Добавить новое слово", callback_data="add_word")
-    btn2 = types.InlineKeyboardButton(text="Начать тренировку", callback_data="start_training")
-    keyboard.add(btn1)
-    keyboard.add(btn2)'''
+
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -40,7 +34,6 @@ def callback_inline(call):
 # перевод пользователя в состояние добавления карточки
 @bot.message_handler(commands=["add"])
 def add_word_handler(message):
-    print(message)
     user_id = message.from_user.id
     set_user_state(user_id, "adding_word", db)
     bot.send_message(message.chat.id, 'Вводите карточки в формате word - перевод. /end - закончить: ')
@@ -48,15 +41,12 @@ def add_word_handler(message):
 
 # все слова, для тестов
 @bot.message_handler(commands=["show_all_cards"])
-def get_all_cards(message):
+def get_all_words(message):
     user_id = message.from_user.id
     words = db.prepare('select word_en, word_ru from word_translations where user_id = $1')
-    words(user_id)
     reply = ''
-    for i in words:
-        # result = re.findall(r'\w+', str(i))
-        # reply += result[0] + ' - ' + result[1] + '\n'
-        reply += str(i) + '\n'
+    for i in words(user_id):
+        reply += i[0] + ' - ' + i[1] + '\n'
     bot.send_message(message.chat.id, reply)
     set_user_state(user_id, 'start', db)
 
@@ -142,9 +132,9 @@ def user_training_handler(message):
 
 
 # добавление пользователья в бд
-def add_user(id):
+def add_user(user_id):
     db_state = db.prepare("INSERT INTO user_states(user_id, state) VALUES ($1, $2)")
-    db_state(id, "start")
+    db_state(user_id, "start")
 
 
 # добавление карточки в бд

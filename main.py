@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 import postgresql
 import config
+import re
 from states import get_user_state, set_user_state
 
 db = postgresql.open(config.dbconnect)
@@ -9,19 +10,23 @@ bot = telebot.TeleBot(config.token)
 
 # текущие тренировки пользователей
 trainings = {}
+
+
 @bot.message_handler(func=lambda message: not get_user_state(message.from_user.id, db))
 def start_messaging(message):
     user_id = message.from_user.id
     add_user(user_id)
     print('user added')
     set_user_state(user_id, 'start', db)
-    bot.send_message(message.chat.id, "Здравствуйте! Наш бот может работать для вас в качестве вашего личного словаря, а также поможет запомнить трудно дающиеся вам слова.")
+    bot.send_message(message.chat.id,
+                     "Здравствуйте! Наш бот может работать для вас в качестве вашего личного словаря, а также поможет запомнить трудно дающиеся вам слова.")
     bot.send_message(message.chat.id, 'Введите "/" и выбирите одну из предложенных команд: ')
     '''keyboard = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton(text="Добавить новое слово", callback_data="add_word")
     btn2 = types.InlineKeyboardButton(text="Начать тренировку", callback_data="start_training")
     keyboard.add(btn1)
     keyboard.add(btn2)'''
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
@@ -40,21 +45,52 @@ def add_word_handler(message):
     set_user_state(user_id, "adding_word", db)
     bot.send_message(message.chat.id, 'Вводите карточки в формате word - перевод. /end - закончить: ')
 
+
 # все слова, для тестов
-@bot.message_handler(commands=["get_words"])
-def get_all_words(message):
+@bot.message_handler(commands=["show_all_cards"])
+def get_all_cards(message):
     user_id = message.from_user.id
-    words = db.prepare('select word_en, word_ru from word_translations')
+    words = db.prepare('select word_en, word_ru from word_translations where user_id = $1')
+    words(user_id)
     reply = ''
     for i in words:
+        # result = re.findall(r'\w+', str(i))
+        # reply += result[0] + ' - ' + result[1] + '\n'
         reply += str(i) + '\n'
     bot.send_message(message.chat.id, reply)
     set_user_state(user_id, 'start', db)
 
-#ловим конец добавления слов
+
+# ловим пользователя находящегося в состоянии удаления своей карточки
+@bot.message_handler(func=lambda message: get_user_state(message.from_user.id, db) == 'word_deleting')
+def delete_word(message):
+    user_id = message.from_user.id
+    word_count = db.prepare('select count(*) from word_translations where user_id = $1')
+    word_count(user_id)
+    str_count_before = re.findall(r'\d+', str(word_count))
+    print(str_count_before)
+    word_deleting = db.prepare('delete from word_translations where user_id = $1 and (word_en = $2 or word_ru = $2)')
+    word_deleting(message.from_user.id, message.text)
+
+    word_count(user_id)
+    str_count_after = re.findall(r'\d+', str(word_count))
+    print(str_count_after)
+
+    set_user_state(user_id, 'start', db)
+
+
+# помещаем пользователя в состояние удаления своей карточки
+@bot.message_handler(commands=["delete_card"])
+def delete_word_state(message):
+    set_user_state(message.from_user.id, 'word_deleting', db)
+    bot.send_message(message.chat.id, 'Введите либо слово либо перевод, которые хотите удалить: ')
+
+
+# ловим конец операций
 @bot.message_handler(commands=["end"])
 def end_adding_words(message):
     set_user_state(message.from_user.id, 'start', db)
+
 
 # перевод пользователя в состояние добавления карточки
 @bot.message_handler(commands=["training"])
@@ -80,7 +116,6 @@ def adding_word(message):
     else:
         add_word(user_id, word, translation)
         bot.send_message(message.chat.id, 'Карточка успешно добавлена!')
-
 
 
 # обработка сообщений от пользователей, находящихся в состоянии тренировки
@@ -131,15 +166,19 @@ def get_words_for_training(user_id):
         LIMIT 5')
     return db_words(user_id)
 
+
 @bot.message_handler(func=lambda message: get_user_state(message.from_user.id, db) == "start")
 def help_show_main_message(message):
     bot.send_message(message.chat.id, 'Введите "/" и выбирите одну из предложенных команд: ')
 
-def change_score(user_id, word, success = True):
-    query_text = 'UPDATE word_translations SET score_en = score_en ' + ('+ 1' if success else '') + ', sum_en = sum_en + 1 ' \
-               + 'WHERE user_id = $1 AND word_en = $2'
+
+def change_score(user_id, word, success=True):
+    query_text = 'UPDATE word_translations SET score_en = score_en ' + (
+        '+ 1' if success else '') + ', sum_en = sum_en + 1 ' \
+                 + 'WHERE user_id = $1 AND word_en = $2'
     prepared_query = db.prepare(query_text)
     prepared_query(user_id, word)
+
 
 if __name__ == '__main__':
     bot.polling(none_stop=True)

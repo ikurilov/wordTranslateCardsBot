@@ -1,3 +1,3 @@
 import os
-dbconnect = os.environ['DATABASE_URL']
+dbconnect = os.environ['DB_URL']
 token = os.environ['BOT_TOKEN']

@@ -1,2 +1,2 @@
 py-postgresql==1.2.1
-telebot==3.5.1
+pyTelegramBotAPI==3.5.1
